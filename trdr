@@ -1,0 +1,75 @@
+#!/usr/bin/env python3
+# encoding: utf-8
+
+import argparse
+import re
+
+
+def update_length_and_replace(match, search_pattern, replacement):
+    old_length = int(match.group(1))
+    old_path = match.group(2)
+
+    if search_pattern in old_path:
+        new_path = old_path.replace(search_pattern, replacement)
+        new_length = old_length + (len(new_path) - len(old_path))
+        return f"{new_length}:{new_path}"
+
+    return match.group(0)
+
+
+def find_and_replace(search_pattern, replacement, file_paths):
+    # Create a regex pattern with capturing groups
+    # for the length (1) and the path (2)
+    pattern = re.compile(r'(\d+):(/[^:]+)')
+
+    for file_path in file_paths:
+        with open(file_path, 'r+', encoding='utf-8') as file:
+            file_contents = file.read()
+
+            new_contents = pattern.sub(
+                lambda match: update_length_and_replace(
+                    match,
+                    search_pattern,
+                    replacement
+                ),
+                file_contents
+            )
+
+            # Return to start of file
+            file.seek(0)
+
+            # Overwrite file, character by character
+            file.write(new_contents)
+
+            # Delete anything left in the file (in case new content
+            # is shorter than what was there before!)
+            file.truncate()
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='Find and replace text in files, updating length prefixes.'
+    )
+    parser.add_argument(
+        '--search',
+        required=True,
+        help='The search pattern to find.'
+    )
+    parser.add_argument(
+        '--replace',
+        required=True,
+        help='The replacement string.'
+    )
+    parser.add_argument(
+        'files',
+        nargs='+',
+        help='The list of files to process.'
+    )
+
+    args = parser.parse_args()
+
+    find_and_replace(args.search, args.replace, args.files)
+
+
+if __name__ == "__main__":
+    main()

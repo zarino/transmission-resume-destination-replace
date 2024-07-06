@@ -1,0 +1,60 @@
+#!/usr/bin/env python3
+# encoding: utf-8
+
+from importlib.util import spec_from_loader, module_from_spec
+from importlib.machinery import SourceFileLoader
+import os
+import tempfile
+
+
+# Import the ../trdr file as a module (despite it
+# not being on the path, nor having a .py extension)
+script_dir = os.path.dirname(__file__)
+spec = spec_from_loader(
+    "trdr", SourceFileLoader(
+        "trdr", os.path.join(script_dir, "../trdr")
+    )
+)
+trdr = module_from_spec(spec)
+spec.loader.exec_module(trdr)
+
+
+FIND = "/old-path/complete"
+
+REPLACE = "/replaced-path/completed"
+
+
+def make_test(id, suffix):
+    return {
+        "id": id,
+        "file_content": f"...11:destination{len(FIND) + len(suffix)}:{FIND}{suffix}3:dnd...",
+        "expected": f"{len(REPLACE) + len(suffix)}:{REPLACE}{suffix}"
+    }
+
+
+def get_test_file_path(test, tmpdir):
+    return os.path.join(tmpdir, f"{test["id"]}.resume")
+
+
+TESTS = [
+    make_test(1, "/foo"),
+    make_test(2, "/barbaz/"),
+    make_test(3, "/with spaces"),
+]
+
+
+with tempfile.TemporaryDirectory() as tmpdir:
+    file_paths = []
+    for TEST in TESTS:
+        file_path = get_test_file_path(TEST, tmpdir)
+        file_paths.append(file_path)
+        with open(file_path, 'w', encoding='utf-8') as file:
+            file.write(TEST["file_content"])
+
+    trdr.find_and_replace(FIND, REPLACE, file_paths)
+
+    for TEST in TESTS:
+        file_path = get_test_file_path(TEST, tmpdir)
+        with open(file_path, 'r', encoding='utf-8') as file:
+            file_contents = file.read()
+            assert TEST["expected"] in file_contents, f"'{TEST["expected"]}' not in '{file_contents}'"
