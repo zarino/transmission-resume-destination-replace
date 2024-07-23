@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # encoding: utf-8
 
+# https://github.com/zarino/transmission-resume-destination-replace
+
 import argparse
 import re
 
@@ -10,9 +12,9 @@ def update_length_and_replace(match, search_pattern, replacement):
     old_path = match.group(2)
 
     if search_pattern in old_path:
-        new_path = old_path.replace(search_pattern, replacement)
+        new_path = old_path.replace(search_pattern, replacement).decode('utf-8')
         new_length = old_length + (len(new_path) - len(old_path))
-        return f"{new_length}:{new_path}"
+        return bytes(f"{new_length}:{new_path}", 'utf-8')
 
     return match.group(0)
 
@@ -20,17 +22,17 @@ def update_length_and_replace(match, search_pattern, replacement):
 def find_and_replace(search_pattern, replacement, file_paths):
     # Create a regex pattern with capturing groups
     # for the length (1) and the path (2)
-    pattern = re.compile(r'(\d+):(/[^:]+)')
+    pattern = re.compile(b'([0-9]+):(/[^:]+)')
 
     for file_path in file_paths:
-        with open(file_path, 'r+', encoding='utf-8') as file:
+        with open(file_path, 'rb+') as file:
             file_contents = file.read()
 
             new_contents = pattern.sub(
                 lambda match: update_length_and_replace(
                     match,
-                    search_pattern,
-                    replacement
+                    bytes(search_pattern, 'utf-8'),
+                    bytes(replacement, 'utf-8')
                 ),
                 file_contents
             )
@@ -48,7 +50,7 @@ def find_and_replace(search_pattern, replacement, file_paths):
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Find and replace text in files, updating length prefixes.'
+        description='Find and replace text in Transmission binary resume files, updating length prefixes.'
     )
     parser.add_argument(
         '--search',
